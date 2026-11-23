@@ -15,3 +15,6 @@ data/sites/*
 !data/sites/dell-com-bba9.json
 .env.local
 .vercel
+
+# Demo film is kept locally but no longer published
+public/site-bridge-demo.mp4

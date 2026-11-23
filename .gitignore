@@ -6,3 +6,9 @@ data/
 .vercel
 *.log
 .impeccable/
+
+.vercel
+.env*
+
+# Local-only media
+public/site-bridge-demo.mp4

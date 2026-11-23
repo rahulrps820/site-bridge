@@ -17,18 +17,6 @@
     el.className = 'status ' + (s.ai ? 'ok' : 'warn');
   }).catch(() => {});
 
-  // ---------- recent ----------
-  async function loadRecent() {
-    const sites = await fetch('/api/sites').then(r => r.json()).catch(() => []);
-    $('#recent-wrap').hidden = !sites.length;
-    $('#recent').innerHTML = sites.map(s => `
-      <a class="card rcard" href="/sites/${esc(s.id)}">
-        <div class="fav">${s.favicon ? `<img src="${esc(s.favicon)}" alt="" onerror="this.remove()">` : ''}</div>
-        <div><b>${esc(s.name)}</b><span>${esc(host(s.url))} · ${s.pages} pages</span></div>
-      </a>`).join('');
-    if (window.revealNew) window.revealNew();
-  }
-
   // ---------- build ----------
   $('#build').addEventListener('submit', async e => {
     e.preventDefault();
@@ -42,6 +30,12 @@
     try {
       await streamBuild(url, btn);
     } catch (err) {
+      if (err.password && window.sbPay && window.sbPay.rejected) {
+        $('#progress').hidden = true;
+        btn.disabled = false;
+        window.sbPay.rejected(() => $('#build').requestSubmit());
+        return;
+      }
       logLine(err.message, 'error');
       $('#p-title').textContent = 'Something went wrong';
       btn.disabled = false;
@@ -76,11 +70,11 @@
 
   // Progress arrives as server-sent events in the response of the scan request itself
   async function streamBuild(url, btn) {
-    const token = window.sbAuth ? await window.sbAuth.token() : null;
-    const res = await fetch('/api/build/stream', { method: 'POST', headers: { 'content-type': 'application/json', ...vh, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ url }) });
+    const key = window.sbKey ? window.sbKey() : '';
+    const res = await fetch('/api/build/stream', { method: 'POST', headers: { 'content-type': 'application/json', ...vh, ...(key ? { 'x-sb-key': key } : {}) }, body: JSON.stringify({ url }) });
     if (!res.ok || !res.body) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Could not start');
+      throw Object.assign(new Error(data.error || 'Could not start'), { password: res.status === 401 && data.password });
     }
     const reader = res.body.getReader();
     const dec = new TextDecoder();
@@ -118,7 +112,6 @@
         history.pushState({}, '', `/sites/${e.siteId}`);
         if (window.sbPay && window.sbPay.refreshNote) window.sbPay.refreshNote();
         showSite(e.siteId);
-        loadRecent();
       }
       if (e.stage === 'error') {
         es.close();
@@ -134,7 +127,8 @@
   const code = text => `<pre class="code">${copyBtn(text)}${esc(text)}</pre>`;
 
   async function showSite(id) {
-    const res = await fetch(`/api/sites/${id}`);
+    const key = window.sbKey ? window.sbKey() : '';
+    const res = await fetch(`/api/sites/${id}`, { headers: key ? { 'x-sb-key': key } : {} });
     if (!res.ok) return;
     const s = await res.json();
     const m = s.manifest;
@@ -151,7 +145,8 @@
             <p>${esc(m.tagline || m.summary || '')}</p>
           </div>
           <div class="actions">
-            <a class="btn-pill" href="${esc(s.links.preview)}" target="_blank">Open Live Demo <span class="arr">→</span></a>
+            <a class="btn-pill" href="${esc(s.links.wordpress)}" download>Download for WordPress <span class="arr">↓</span></a>
+            <a class="btn-pill ghost" href="${esc(s.links.preview)}" target="_blank">Open Live Demo <span class="arr">→</span></a>
             <button class="btn-pill ghost" id="rebuild">Re-scan <span class="arr">↻</span></button>
           </div>
         </div>
@@ -159,15 +154,15 @@
       <div class="stats">
         <div class="card stat"><div class="k">Pages read</div><div class="v">${s.stats.pages}</div><div class="s">${s.stats.discovered} URLs discovered</div></div>
         <div class="card stat"><div class="k">Knowledge chunks</div><div class="v">${s.stats.chunks}</div><div class="s">searchable passages</div></div>
-        <div class="card stat"><div class="k">MCP tools</div><div class="v">${s.tools.length}</div><div class="s">generated for this site</div></div>
-                <div class="card stat"><div class="k">Visitor tasks</div><div class="v">${m.tasks.length}</div><div class="s">actions the agent can carry out</div></div>
+        <div class="card stat"><div class="k">Agent tool</div><div class="v">${s.tools.length}</div><div class="s">one tool for agent pipelines</div></div>
+        <div class="card stat"><div class="k">Visitor tasks</div><div class="v">${m.tasks.length}</div><div class="s">actions the agent can carry out</div></div>
       </div>
       <div class="card">
         <div class="tabs">
           <button class="tab on" data-tab="overview">Overview</button>
-          <button class="tab" data-tab="mcp">MCP server</button>
-          <button class="tab" data-tab="embed">Embed on your site</button>
-          <button class="tab" data-tab="knowledge">Knowledge</button>
+          <button class="tab" data-tab="embed">Install on your website</button>
+          <button class="tab" data-tab="knowledge">Knowledge base</button>
+          <button class="tab" data-tab="mcp">Agent pipeline</button>
           <button class="tab" data-tab="pages">Pages (${s.pageList.length})</button>
         </div>
 
@@ -186,27 +181,31 @@
         </div>
 
         <div class="pane" data-pane="mcp" hidden>
-          <section><h4>Endpoint (MCP Streamable HTTP)</h4>${code(s.links.mcp)}</section>
+          <section><h4>Connect any AI agent or pipeline (MCP)</h4>
+            <p style="margin:0 0 12px">One tool, <code>${esc(s.tools[0]?.name || 'site_knowledge')}</code>, gives an agent everything on this website: call it with no arguments for the site profile, with a <code>query</code> to search every page, or with a <code>page</code> for one page's full text.</p>
+            ${code(s.links.mcp)}</section>
           <section><h4>Claude Code / Cursor / VS Code</h4>${code(mcpConfig)}
             <p class="note">Or run: <code>claude mcp add --transport http ${esc(s.id)} ${esc(s.links.mcp)}</code></p></section>
-          <section><h4>Claude Desktop (via mcp-remote)</h4>${code(mcpRemote)}
-            <p class="note">For other people to use it, deploy Site Bridge on a public URL and set PUBLIC_URL.</p></section>
-          <section><h4>Generated tools</h4><div class="list">${s.tools.map(t => `<div class="tool"><code>${esc(t.name)}</code><div class="d">${esc(t.description)}</div></div>`).join('')}</div></section>
-          <section><h4>Pine Labs AgenticOrg</h4>
-            <p style="margin:0">The live agent hands visitors' order, payment, refund and delivery problems to AgenticOrg's Support Triage agent, which picks the team and priority. Hand-offs appear on the admin dashboard.</p></section>
-          <section><h4>Also generated</h4>
+          <section><h4>Claude Desktop (via mcp-remote)</h4>${code(mcpRemote)}</section>
+          <section><h4>For crawlers and LLMs</h4>
             <div class="actions"><a class="btn-pill ghost sm" href="${esc(s.links.llms)}" target="_blank">llms.txt</a><a class="btn-pill ghost sm" href="${esc(s.links.manifest)}" target="_blank">agent.json</a></div></section>
         </div>
 
         <div class="pane" data-pane="embed" hidden>
-          <section><h4>Add the agent to your website</h4>
-            <p style="margin:0 0 12px">Paste this before <code>&lt;/body&gt;</code>. The agent appears inside your site in your brand colour, as an "Ask AI" button that opens a side panel. It answers from your content and can move around your pages for the visitor.</p>
+          <section><h4>WordPress: one file</h4>
+            <p style="margin:0 0 12px">Download the plugin, then in WordPress go to <b>Plugins → Add New → Upload Plugin</b>, choose the .zip and click <b>Activate</b>. An "Ask AI" button appears on every page. It answers from your content and moves around your pages for the visitor. Works with any theme or page builder.</p>
+            <a class="btn-pill sm" href="${esc(s.links.wordpress)}" download>Download WordPress plugin <span class="arr">↓</span></a></section>
+          <section><h4>Any other website</h4>
+            <p style="margin:0 0 12px">Shopify, Webflow, Wix, Squarespace or plain HTML: paste this before <code>&lt;/body&gt;</code>.</p>
             ${code(s.links.widget)}</section>
           <section><h4>Preview it first</h4><p style="margin:0 0 12px">The live demo is your real website with the agent already living inside it. Nothing to install.</p>
-            <a class="btn-pill sm" href="${esc(s.links.preview)}" target="_blank">Open Live Demo <span class="arr">→</span></a></section>
+            <a class="btn-pill ghost sm" href="${esc(s.links.preview)}" target="_blank">Open Live Demo <span class="arr">→</span></a></section>
         </div>
 
         <div class="pane" data-pane="knowledge" hidden>
+          <section><h4>Download the knowledge base</h4>
+            <p style="margin:0 0 12px">Everything the agent learned from ${esc(s.stats.pages)} pages: summary, facts, offerings, FAQs, contact details, visitor tasks and the full text of every page. Use it in a chatbot, a RAG pipeline, a custom GPT or a help centre.</p>
+            <div class="actions"><a class="btn-pill sm" href="${esc(s.links.knowledgeMd)}" download>Markdown <span class="arr">↓</span></a><a class="btn-pill ghost sm" href="${esc(s.links.knowledgeJson)}" download>JSON <span class="arr">↓</span></a></div></section>
           <div class="grid2">
             <section><h4>Offerings</h4>${m.offerings.length ? `<div class="list">${m.offerings.map(o => `<div class="item"><b>${esc(o.name)}</b>${o.price ? ` · ${esc(o.price)}` : ''}<div class="d">${esc(o.description || '')}</div></div>`).join('')}</div>` : '<p class="muted">None detected.</p>'}</section>
             <section><h4>FAQs</h4>${m.faqs.length ? `<div class="list">${m.faqs.map(f => `<div class="item"><b>${esc(f.q)}</b><div class="d">${esc(f.a)}</div></div>`).join('')}</div>` : '<p class="muted">None detected.</p>'}</section>
@@ -244,6 +243,9 @@
   });
 
   const m = location.pathname.match(/^\/sites\/([a-z0-9-]+)$/);
-  if (m) showSite(m[1]);
-  loadRecent();
+  if (m) {
+    showSite(m[1]);
+    // Opened before the demo password was entered: load the results once it is
+    document.addEventListener('sb:unlocked', () => showSite(m[1]), { once: true });
+  }
 })();

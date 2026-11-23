@@ -5,6 +5,7 @@ import { config, previewOriginFor, demoPageFor } from './lib/config.js';
 import { buildSite } from './lib/builder.js';
 import { getSite, getIndex, listSites, deleteSite } from './lib/store.js';
 import { handleMcp, publicTools } from './lib/mcp.js';
+import { wordpressPlugin, knowledgeMarkdown, knowledgeJson, pluginSlug } from './lib/package.js';
 import { chatTurn } from './lib/agent.js';
 import { llmsTxt } from './lib/knowledge.js';
 import { sendToAgenticOrg, agenticOrgReady } from './lib/agenticorg.js';
@@ -56,8 +57,24 @@ app.use(express.static(path.join(config.root, 'public'), {
 
 const jobs = new Map();
 
+// One shared password (DEMO_PASSWORD) unlocks scanning and live demos. Unset: everything is open.
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || '';
+const keyLimit = rateLimiter({ perMinute: 10, perHour: 60, keyOf: req => `key:${req.ip}`, message: 'Too many tries. Please wait a minute.' });
+function passwordOk(req) {
+  if (!DEMO_PASSWORD) return true;
+  const got = crypto.createHash('sha256').update(String(req.headers['x-sb-key'] || req.body?.password || '')).digest();
+  const want = crypto.createHash('sha256').update(DEMO_PASSWORD).digest();
+  return crypto.timingSafeEqual(got, want);
+}
+// The right password is never rate limited (unlimited demos); only wrong guesses are
+function needPassword(req, res, next) {
+  if (passwordOk(req)) return next();
+  keyLimit(req, res, () => res.status(401).json({ error: 'Wrong password.', password: true }));
+}
+app.post('/api/access/check', needPassword, (req, res) => res.json({ ok: true }));
+
 // Scan with progress streamed back in the same response (works on serverless hosts too)
-app.post('/api/build/stream', async (req, res) => {
+app.post('/api/build/stream', needPassword, async (req, res) => {
   const url = String(req.body?.url || '').trim();
   if (!url) return res.status(400).json({ error: 'Paste a website URL first' });
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' });
@@ -76,7 +93,7 @@ app.post('/api/build/stream', async (req, res) => {
   }
 });
 
-app.post('/api/build', (req, res) => {
+app.post('/api/build', needPassword, (req, res) => {
   const url = String(req.body?.url || '').trim();
   if (!url) return res.status(400).json({ error: 'Paste a website URL first' });
   const maxPages = Math.min(Math.max(Number(req.body?.maxPages) || config.maxPages, 3), 100);
@@ -117,13 +134,16 @@ function siteLinks(site) {
     llms: `${config.publicUrl}/sites/${site.id}/llms.txt`,
     manifest: `${config.publicUrl}/sites/${site.id}/agent.json`,
     widget: `<script src="${config.publicUrl}/widget.js" data-site="${site.id}" defer></script>`,
+    wordpress: `${config.publicUrl}/sites/${site.id}/wordpress.zip`,
+    knowledgeMd: `${config.publicUrl}/sites/${site.id}/knowledge.md`,
+    knowledgeJson: `${config.publicUrl}/sites/${site.id}/knowledge.json`,
   };
 }
 
 // auth holds only the public URL and publishable key; secret keys never leave the server
-app.get('/api/status', (req, res) => res.json({ ai: hasKey(), contact: process.env.CONTACT_EMAIL || null, spend: spend(), auth: authConfig, agenticorg: agenticOrgReady,
+app.get('/api/status', (req, res) => res.json({ ai: hasKey(), contact: process.env.CONTACT_EMAIL || null, spend: spend(), password: Boolean(DEMO_PASSWORD), agenticorg: agenticOrgReady,
   payments: paymentsReady ? { upiId: payConfig.upiId, payee: payConfig.payee, amount: payConfig.amount, credits: payConfig.credits, free: payConfig.free } : null }));
-app.get('/api/sites', async (req, res) => res.json(await listSites()));
+app.get('/api/sites', needPassword, async (req, res) => res.json(await listSites()));
 
 // Email sign-in: sends a one-time link through Resend (5 requests per 10 minutes per IP)
 const authLimit = rateLimiter({ perMinute: 3, perHour: 12, keyOf: req => `auth:${req.ip}`, message: 'Too many sign-in requests. Please wait a few minutes.' });
@@ -150,17 +170,12 @@ app.post('/api/pay/claim', payLimit, async (req, res) => {
   try { const r = await claim(user, req.body?.utr); res.status(r.ok ? 200 : r.status).json(r.ok ? r : { error: r.error }); }
   catch (e) { console.error('[pay]', e.message); res.status(500).json({ error: 'Could not record the payment right now.' }); }
 });
-app.post('/api/demo/start/:id', payLimit, async (req, res) => {
-  const user = await needUser(req, res); if (!user) return;
+app.post('/api/demo/start/:id', needPassword, async (req, res) => {
   const site = await getSite(req.params.id);
   if (!site) return res.status(404).json({ error: 'This site has not been scanned.' });
-  try {
-    const r = await startDemo(user, site.id);
-    // A one-day pass for this account and site: the demo address only opens with it
-    if (r.ok) r.pass = signPass({ u: user.id, s: site.id, m: user.email || '', e: Date.now() + 24 * 3600_000 });
-    res.status(r.ok ? 200 : r.status).json(r.ok ? r : { error: r.error, balance: r.balance });
-  }
-  catch (e) { console.error('[demo]', e.message); res.status(500).json({ error: 'Could not open the demo right now.' }); }
+  // A 30-day pass for this site: the demo address only opens with it
+  track(req, 'demo_open', { siteId: site.id });
+  res.json({ ok: true, pass: signPass({ u: 'shared', s: site.id, m: '', e: Date.now() + 30 * 24 * 3600_000 }) });
 });
 
 // Anonymous usage: the browser reports visits; the admin page reads the totals
@@ -200,7 +215,7 @@ app.post('/api/admin/payments/:id', async (req, res) => {
 });
 app.get('/usage', (req, res) => res.sendFile(path.join(config.root, 'public', 'usage.html'), err => { if (err && !res.headersSent) res.redirect(302, '/usage.html'); }));
 
-app.get('/api/sites/:id', async (req, res) => {
+app.get('/api/sites/:id', needPassword, async (req, res) => {
   const site = await getSite(req.params.id);
   if (!site) return res.status(404).json({ error: 'Not found' });
   const { pages, chunks, shared, cost, ...rest } = site;
@@ -212,7 +227,7 @@ app.get('/api/sites/:id', async (req, res) => {
   });
 });
 
-app.delete('/api/sites/:id', async (req, res) => { await deleteSite(req.params.id); res.json({ ok: true }); });
+app.delete('/api/sites/:id', needPassword, async (req, res) => { await deleteSite(req.params.id); res.json({ ok: true }); });
 
 // Push this site's knowledge into the Pine Labs AgenticOrg knowledge base
 const aoLimit = rateLimiter({ perMinute: 4, perHour: 40, keyOf: req => `ao:${req.ip}`, message: 'Please wait a moment before sending again.' });
@@ -248,9 +263,15 @@ const chatLimitBySite = rateLimiter({
   keyOf: req => `site:${req.body?.siteId || ''}`,
   message: 'The assistant is very busy right now. Please try again in a few minutes.',
 });
+// Live demos opened with the shared password are unlimited: skip the chat rate limits for them
+const demoUnlimited = limit => (req, res, next) => {
+  const pass = verifyPass(req.headers['x-sb-pass']);
+  if (pass && pass.u === 'shared' && pass.s === req.body?.siteId) return next();
+  return limit(req, res, next);
+};
 
 app.options('/api/chat', cors);
-app.post('/api/chat', cors, chatLimitByIp, chatLimitBySite, async (req, res) => {
+app.post('/api/chat', cors, demoUnlimited(chatLimitByIp), demoUnlimited(chatLimitBySite), async (req, res) => {
   const { siteId, contents, token, currentUrl, title, lang } = req.body || {};
   if (typeof siteId !== 'string') return res.status(400).json({ error: 'Unknown site' });
   const [site, index] = await Promise.all([getSite(siteId), getIndex(siteId)]);
@@ -263,8 +284,8 @@ app.post('/api/chat', cors, chatLimitByIp, chatLimitBySite, async (req, res) => 
     // against the account's chat allowance
     if (config.demoHost && String(req.headers.origin || '').toLowerCase() === `https://${config.demoHost}`) {
       const pass = verifyPass(req.headers['x-sb-pass']);
-      if (!pass || pass.s !== siteId) return res.status(401).json({ error: 'Please open this live demo from Site Bridge after signing in.' });
-      if (typed) {
+      if (!pass || pass.s !== siteId) return res.status(401).json({ error: 'Please open this live demo from Site Bridge with the demo password.' });
+      if (typed && pass.u !== 'shared') {
         const c = await useChat({ id: pass.u, email: pass.m }, siteId).catch(e => { console.error('[chats]', e.message); return { ok: true }; });
         if (!c.ok) return res.status(402).json({ error: `You've used all ${c.limit} chats on your account. ${c.paid ? 'Pay ₹' + payConfig.amount + ' on Site Bridge for 10 more.' : 'Pay ₹' + payConfig.amount + ' on Site Bridge to get 10 more chats.'}` });
       }
@@ -282,6 +303,27 @@ app.post('/api/chat', cors, chatLimitByIp, chatLimitBySite, async (req, res) => 
 });
 
 // ---------- agent-readable outputs ----------
+
+// Downloads: the WordPress plugin (installs the agent) and the knowledge base
+app.get('/sites/:id/wordpress.zip', async (req, res) => {
+  const site = await getSite(req.params.id);
+  if (!site) return res.status(404).type('text').send('Not found');
+  track(req, 'download', { siteId: site.id, meta: { kind: 'wordpress' } });
+  res.setHeader('content-disposition', `attachment; filename="${pluginSlug(site)}.zip"`);
+  res.type('application/zip').send(wordpressPlugin(site, config.publicUrl));
+});
+app.get('/sites/:id/knowledge.md', async (req, res) => {
+  const site = await getSite(req.params.id);
+  if (!site) return res.status(404).type('text').send('Not found');
+  res.setHeader('content-disposition', `attachment; filename="${site.id}-knowledge.md"`);
+  res.type('text/markdown; charset=utf-8').send(knowledgeMarkdown(site));
+});
+app.get('/sites/:id/knowledge.json', async (req, res) => {
+  const site = await getSite(req.params.id);
+  if (!site) return res.status(404).json({ error: 'Not found' });
+  res.setHeader('content-disposition', `attachment; filename="${site.id}-knowledge.json"`);
+  res.type('application/json; charset=utf-8').send(JSON.stringify(knowledgeJson(site), null, 2));
+});
 
 app.get('/sites/:id/llms.txt', async (req, res) => {
   const site = await getSite(req.params.id);

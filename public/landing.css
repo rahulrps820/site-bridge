@@ -339,3 +339,8 @@ html.lenis,.lenis.lenis-smooth{scroll-behavior:auto!important}
 .lx-pay-continue{width:100%;justify-content:center;height:42px;margin-top:4px}
 @media (max-width:560px){.lx-pay[open]{inset:auto 12px 12px 12px;width:auto}}
 .lx-pay-continue[hidden],.lx-pay-form[hidden]{display:none!important}
+
+/* Invitation-only gate: nothing behind the password dialog shows until it is unlocked */
+html.sb-locked body>*:not(.lx-gate){visibility:hidden}
+html.sb-locked body{background:#0b0c10}
+.lx-gate::backdrop{background:#0b0c10}

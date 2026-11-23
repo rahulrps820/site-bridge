@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/landing.css">
+  <!-- Invitation-only: hide the page until the demo password is entered (see access.js) -->
+  <script>try { if (!localStorage.getItem('sb:key')) document.documentElement.classList.add('sb-locked'); } catch (e) { document.documentElement.classList.add('sb-locked'); }</script>
 </head>
 <body class="lx">
   <!-- Announcement bar -->
@@ -21,7 +23,6 @@
         <a href="#how">How It Works</a>
         <a href="#capabilities">Capabilities</a>
         <a href="#plans">Plans</a>
-        <a href="#recent-wrap">Recent Sites</a>
         <a href="#faq">FAQ</a>
       </nav>
       <div class="lx-nav-cta">
@@ -92,6 +93,7 @@
           <span class="lx-logos-checks"><i>Site Crawler</i><i>MCP Server</i><i>On-site Agent</i></span>
         </div>
       </section>
+
 
       <!-- Live scan progress and results (filled in by app.js) -->
       <div class="lx-runtime">
@@ -235,11 +237,6 @@
         </div>
       </section>
 
-      <!-- Recent sites -->
-      <section id="recent-wrap" class="lx-section lx-top-line recent-wrap" hidden>
-        <div class="lx-eyebrow"><i></i>Recent Sites</div>
-        <div id="recent" class="recent"></div>
-      </section>
     </main>
 
     <!-- Closing call to action and footer -->
@@ -260,7 +257,7 @@
           <a class="lx-btn lx-btn-line" href="#contact" data-contact>Contact Us ↗</a>
         </div>
         <div><h4>Product</h4><a href="#how">How It Works</a><a href="#capabilities">Capabilities</a><a href="#plans">Plans</a><a href="#faq">FAQ</a></div>
-        <div><h4>Build</h4><a href="#start">New Scan</a><a href="#recent-wrap">Recent Sites</a><a href="#embed">Embed</a></div>
+        <div><h4>Build</h4><a href="#start">New Scan</a><a href="#embed">Embed</a></div>
         <div><h4>Standards</h4><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP</a><a href="https://llmstxt.org" target="_blank" rel="noopener">llms.txt</a></div>
       </div>
       <div class="lx-foot-line"><span>© Site Bridge. All rights reserved.</span><span>Turn any website into an AI agent.</span></div>
@@ -268,10 +265,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="/auth.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="/pay.js"></script>
+  <script src="/access.js"></script>
   <script src="/app.js"></script>
   <script src="/motion.js"></script>
 </body>
