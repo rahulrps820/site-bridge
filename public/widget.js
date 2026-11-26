@@ -212,6 +212,7 @@
     chat = window.Agentify.mountChat(wrap.querySelector('.agw-chat'), {
       apiBase: base,
       siteId: siteId,
+      demo: demo,
       accent: accent,
       onAccent: onAccent,
       font: font,

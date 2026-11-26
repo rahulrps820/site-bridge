@@ -113,7 +113,19 @@ One shared password, `DEMO_PASSWORD`, protects the app:
 
 - The page asks for it as soon as it opens; nothing shows behind the dialog. The browser remembers it.
 - The server checks it (header `x-sb-key`) on scans, site data, deletes and starting a live demo. The right password is never rate limited; wrong guesses are limited to 10 a minute per IP.
-- Starting a demo returns a signed pass valid for 30 days for that one site. Chats in a demo with a valid pass have no rate limit.
+- Starting a demo returns a signed pass valid for 30 days for that one site.
+
+## Live demo rules
+
+The live demo is a sales preview, not the product:
+
+- The visitor picks from the site's **recommended questions** (made during the scan, with sensible fallbacks). There is no free-text box in a demo.
+- They can ask **`DEMO_QUESTION_LIMIT`** questions (default 2; `0` = no limit). Then the panel shows **"Contact our team for setup"**, linking to `CONTACT_URL`, or an email to `CONTACT_EMAIL` with the site name filled in, or the page's contact section.
+- The server enforces both rules (`isDemoRequest`, `demoQuestions` in `server.js`), not only the browser. A request counts as a demo when it comes from the demo host (or the local preview address).
+- The agent installed on a customer's own website (plugin or script tag) is never limited.
+- Your own team gets **unlimited** demo questions with **`TEAM_PASSWORD`**: enter it in the site's password box, or click "Team member? Unlock unlimited questions" in a demo panel. It returns a 30-day team pass for that site; the server skips the limit for it. Wrong guesses are rate limited.
+
+The count is kept per browser. Someone who clears their browser data can ask again, but still only the recommended questions.
 - Leave it empty to make the app open (local development).
 
 Public on purpose, because customer sites and AI tools call them: the widget, `/api/chat`, `/api/sites/<id>/public`, `/mcp/<id>` and the download files.
@@ -205,7 +217,9 @@ Every setting is listed with comments in [`.env.example`](.env.example). The one
 | `MAX_PAGES`, `CRAWL_SECONDS`, `DIGEST_CHARS`, `RENDER_JS` | No | Scan size and depth |
 | `POSTGRES_URL`, `SUPABASE_*` | No | Usage tracking |
 | `ADMIN_KEY` | For `/usage` | Admin dashboard |
-| `CONTACT_EMAIL` | No | Talk to Us address |
+| `TEAM_PASSWORD` | Recommended | Team password: everything `DEMO_PASSWORD` opens, plus unlimited demo questions |
+| `DEMO_QUESTION_LIMIT` | No | Questions per live demo, recommended ones only (default 2, `0` = no limit) |
+| `CONTACT_URL`, `CONTACT_EMAIL` | Recommended | Where "Talk to Us" and "Contact our team for setup" go |
 | `AGENTICORG_API_KEY`, `AGENTICORG_BASE_URL` | No | AgenticOrg hand-off |
 
 ## Guardrails and security

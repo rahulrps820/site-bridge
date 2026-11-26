@@ -13,9 +13,16 @@
   fetch('/api/status').then(r => r.json()).then(s => {
     const el = $('#ai-status');
     el.textContent = s.ai ? 'AI engine ready' : 'AI engine offline';
-    if (s.contact) document.querySelectorAll('[data-contact]').forEach(a => { a.href = `mailto:${s.contact}`; });
+    const contactHref = s.contactUrl || (s.contact ? `mailto:${s.contact}` : '');
+    if (contactHref) document.querySelectorAll('[data-contact]').forEach(a => { a.href = contactHref; if (s.contactUrl) { a.target = '_blank'; a.rel = 'noopener'; } });
     el.className = 'status ' + (s.ai ? 'ok' : 'warn');
   }).catch(() => {});
+
+  // "Try it" links: after the jump to the scan box, put the cursor in it
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href="#build-card"]');
+    if (a) setTimeout(() => { try { $('#url').focus({ preventScroll: true }); } catch (err) { $('#url').focus(); } }, 700);
+  });
 
   // ---------- build ----------
   $('#build').addEventListener('submit', async e => {

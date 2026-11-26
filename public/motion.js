@@ -5,7 +5,7 @@
 
   // ---- smooth scrolling (Lenis), with in-page anchors handled ----
   if (!reduced && window.Lenis) {
-    var lenis = new window.Lenis({ lerp: 0.12, wheelMultiplier: 1, smoothWheel: true, syncTouch: false, anchors: { offset: -80 } });
+    var lenis = new window.Lenis({ lerp: 0.12, wheelMultiplier: 1, smoothWheel: true, syncTouch: false, anchors: { offset: -96 } });
     (function raf(time) { lenis.raf(time); requestAnimationFrame(raf); })(performance.now());
     window.__lenis = lenis;
   }

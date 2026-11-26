@@ -27,7 +27,7 @@
       const app = (cfg && cfg.appUrl ? cfg.appUrl : '').replace(/\/$/, '');
       document.querySelector('.frame-wrap').innerHTML = `<div style="max-width:520px;margin:80px auto;padding:0 20px;font:15px/1.6 'Inter Tight',system-ui,sans-serif;color:#0b0c10">
         <h2 style="font-weight:400;font-size:26px;margin:0 0 10px">Open this live demo from Site Bridge</h2>
-        <p style="color:#4b4f5c;margin:0 0 18px">Live demos open from your Site Bridge account. Sign in, then click <b>Open Live Demo</b> on this site's results.</p>
+        <p style="color:#4b4f5c;margin:0 0 18px">Live demos open from Site Bridge. Enter the demo password there, then click <b>Open Live Demo</b> on this site's results.</p>
         <a href="${app}/sites/${encodeURIComponent(siteId)}" style="display:inline-block;padding:10px 16px;background:#0b0c10;color:#fff;text-decoration:none;font-size:12px;letter-spacing:.06em;text-transform:uppercase">Go to Site Bridge</a></div>`;
       return;
     }

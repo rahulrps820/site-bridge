@@ -2,10 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Site Bridge</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Site Bridge · Turn Any Website into an AI Agent (WordPress, Shopify, any site)</title>
+  <meta name="description" content="Paste your website link and get an AI agent that answers visitors and guides them around your pages. Install with one WordPress plugin or one script tag, download the knowledge base, or connect AI tools through MCP.">
+  <meta name="keywords" content="AI website agent, AI chatbot for website, WordPress AI chatbot plugin, AI assistant for Shopify, website AI assistant, agentic website, conversational AI for websites, AI customer support, AI sales assistant, no-code AI agent, website knowledge base, RAG knowledge base, MCP server, Model Context Protocol, llms.txt generator, AI search optimization, 24/7 website support">
+  <meta name="theme-color" content="#2238f5">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Site Bridge">
+  <meta property="og:title" content="Site Bridge · Turn Any Website into an AI Agent">
+  <meta property="og:description" content="One link in: an AI agent on your website, a downloadable knowledge base and an MCP endpoint for AI tools. Install on WordPress or any site.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Site Bridge · Turn Any Website into an AI Agent">
+  <meta name="twitter:description" content="An AI agent that answers visitors and guides them around your pages. One WordPress plugin or one script tag.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <meta name="description" content="Turn any website into an agentic website: an MCP server plus a live AI agent that can browse the site for your visitors.">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Site Bridge","applicationCategory":"BusinessApplication","operatingSystem":"Web",
+   "description":"Turns any website into an AI agent: an on-site assistant that answers visitors and operates the page, a WordPress plugin, a downloadable knowledge base and an MCP endpoint.",
+   "featureList":["AI agent on your website","WordPress plugin","One-line embed for any website","Downloadable knowledge base (Markdown, JSON)","MCP server for AI tools","llms.txt"]}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/app.css">
@@ -14,32 +28,34 @@
   <script>try { if (!localStorage.getItem('sb:key')) document.documentElement.classList.add('sb-locked'); } catch (e) { document.documentElement.classList.add('sb-locked'); }</script>
 </head>
 <body class="lx">
+  <a class="lx-skip" href="#main">Skip to content</a>
   <!-- Announcement bar -->
-  <a class="lx-announce" href="#start"><span>New</span> MCP Server + Live Agent in One Scan <span aria-hidden="true">→</span></a>
+  <a class="lx-announce" href="#integrate"><span>New</span> WordPress plugin + live AI agent from one scan <span aria-hidden="true">→</span></a>
 
   <div class="lx-frame">
     <header class="nav lx-nav">
       <a class="logo" href="/"><span class="logo-mark"><svg class="sb-mark" viewBox="0 0 22 16" width="22" height="16" aria-hidden="true"><path d="M7.2 1h13.6l-3.2 5.6H4z" fill="#2238f5"/><path d="M4.4 9.4H18l-3.2 5.6H1.2z" fill="#2238f5"/></svg></span><span class="wm">Site Bridge<sup>°</sup></span></a>
-      <nav>
+      <nav aria-label="Main">
         <a href="#how">How It Works</a>
+        <a href="#integrate">Install</a>
         <a href="#capabilities">Capabilities</a>
         <a href="#plans">Plans</a>
         <a href="#faq">FAQ</a>
       </nav>
       <div class="lx-nav-cta">
         <a class="lx-btn lx-btn-line" href="#contact" data-contact>Talk to Us</a>
-        <a class="lx-btn lx-btn-dark" href="#start">Try It Free</a>
+        <a class="lx-btn lx-btn-dark" href="#build-card">Try It Free</a>
       </div>
     </header>
 
-    <main class="lx-main">
+    <main class="lx-main" id="main" tabindex="-1">
       <!-- Hero -->
       <section id="start" class="lx-hero">
         <div class="lx-hero-top">
           <div class="lx-hero-intro">
             <div class="lx-badge"><span class="lx-badge-sq" aria-hidden="true">0</span>Zero code · Nothing to install to try it</div>
             <h1>Turn Any Website<br>into an AI Agent</h1>
-            <p class="lx-lead">Paste your link and we read every public page, build an <b>MCP</b> server for it, and put an AI agent on your site that answers visitors and drives the UI for them.</p>
+            <p class="lx-lead">Paste your website link. We read every public page and build an AI agent that answers your visitors and guides them around your site, day and night. Install it with one <b>WordPress plugin</b> or one line of code.</p>
             <div class="lx-hero-btns">
               <a class="lx-btn lx-btn-line" href="#contact" data-contact>Talk to Us</a>
               <a class="lx-btn lx-btn-dark" href="#build-card"><span aria-hidden="true">→</span> Try It Free</a>
@@ -69,10 +85,10 @@
           </div>
         </div>
 
-        <div class="lx-visual">
+        <div class="lx-visual" id="build-card">
           <canvas class="lx-pixels" data-seed="7" aria-hidden="true"></canvas>
           <form id="build" class="lx-card" autocomplete="off">
-            <div class="lx-card-label" id="build-card"><span>Paste your link</span><span class="lx-card-note">~10 seconds to learn a 20-page website</span></div>
+            <div class="lx-card-label"><label for="url">Paste your website link</label><span class="lx-card-note">Takes about a minute</span></div>
             <div class="lx-card-box">
               <input id="url" type="text" inputmode="url" placeholder="yourwebsite.com" spellcheck="false" required aria-label="Website address">
               <div class="lx-card-foot">
@@ -129,7 +145,7 @@
           </article>
           <article class="lx-dark-card">
             <svg class="lx-iso" viewBox="0 0 64 64" aria-hidden="true"><path d="M14 24l18-9 18 9-18 9z" fill="#2238f5"/><path d="M14 24v14l18 9V33z" fill="#151a6b"/><path d="M50 24v14l-18 9V33z" fill="#3d5afe"/><path d="M20 34l12 6M20 30l12 6" stroke="#9fb0ff" stroke-width="1.5"/></svg>
-            <div><b data-count="12" data-suf="+">12+</b><p>MCP tools generated for every website</p></div>
+            <div><b>1 file</b><p>A WordPress plugin or one script tag puts the agent live</p></div>
           </article>
           <article class="lx-dark-card">
             <svg class="lx-iso" viewBox="0 0 64 64" aria-hidden="true"><path d="M16 20l16-8 16 8-16 8z" fill="#3d5afe"/><path d="M16 20v22l16 8V28z" fill="#1a237e"/><path d="M48 20v22l-16 8V28z" fill="#2238f5"/><circle cx="40" cy="33" r="4" fill="none" stroke="#9fb0ff" stroke-width="1.5"/></svg>
@@ -145,42 +161,38 @@
 
         <div class="lx-feature">
           <div class="lx-feature-text">
-            <div class="lx-eyebrow lx-eyebrow-left"><i></i>Deep Site Crawl</div>
             <h3>Deep Site Crawl</h3>
             <p>Reads robots.txt, sitemaps and every linked page. Pulls out text, forms, products, contact details and structured data.</p>
-            <a class="lx-link" href="#start">Read more <span>→</span></a>
+            <a class="lx-link" href="#how">See how it works <span aria-hidden="true">→</span></a>
           </div>
           <div class="lx-feature-art"><canvas class="lx-pixels" data-seed="3" aria-hidden="true"></canvas><div class="lx-mini"><div class="lx-mini-head">Deep Site Crawl</div><div class="lx-mini-lines"><i></i><i></i><i></i></div></div></div>
         </div>
 
         <div class="lx-feature lx-flip">
           <div class="lx-feature-text">
-            <div class="lx-eyebrow lx-eyebrow-left"><i></i>MCP Server, Generated</div>
             <h3>MCP Server, Generated</h3>
-            <p>Every site gets its own MCP endpoint with tools like search, pages, offerings and step-by-step tasks, ready for Claude, Cursor and any MCP client.</p>
-            <a class="lx-link" href="#start">Read more <span>→</span></a>
+            <p>Every site gets its own MCP endpoint with one tool, <code>site_knowledge</code>: the site profile, search across every page and the full text of any page. Ready for Claude, Cursor and any MCP client.</p>
+            <a class="lx-link" href="#integrate">Connect your AI tools <span aria-hidden="true">→</span></a>
           </div>
           <div class="lx-feature-art"><canvas class="lx-pixels" data-seed="11" aria-hidden="true"></canvas><div class="lx-mini"><div class="lx-mini-head">MCP Server, Generated</div><div class="lx-mini-lines"><i></i><i></i><i></i></div></div></div>
         </div>
 
         <div class="lx-feature">
           <div class="lx-feature-text">
-            <div class="lx-eyebrow lx-eyebrow-left"><i></i>Live On-site Agent</div>
             <h3>Live On-site Agent</h3>
             <p>The agent appears inside your website in your brand colours. It answers from your content, opens pages, highlights what matters and fills forms for visitors.</p>
-            <a class="lx-link" href="#start">Read more <span>→</span></a>
+            <a class="lx-link" href="#build-card">Try it on your website <span aria-hidden="true">→</span></a>
           </div>
           <div class="lx-feature-art"><canvas class="lx-pixels" data-seed="19" aria-hidden="true"></canvas><div class="lx-mini"><div class="lx-mini-head">Live On-site Agent</div><div class="lx-mini-lines"><i></i><i></i><i></i></div></div></div>
         </div>
 
         <div class="lx-feature lx-flip" id="embed">
           <div class="lx-feature-text">
-            <div class="lx-eyebrow lx-eyebrow-left"><i></i>One-line Embed</div>
-            <h3>One-line Embed</h3>
-            <p>Preview it on your real site first, then paste a single script tag. The agent picks up your brand colour and font automatically.</p>
-            <a class="lx-link" href="#start">Read more <span>→</span></a>
+            <h3>WordPress Plugin or One-line Embed</h3>
+            <p>Preview it on your real site first. Then upload one plugin to WordPress, or paste one script tag into Shopify, Webflow, Wix or any site. The agent picks up your brand colour and font automatically.</p>
+            <a class="lx-link" href="#integrate">See the install guide <span aria-hidden="true">→</span></a>
           </div>
-          <div class="lx-feature-art"><canvas class="lx-pixels" data-seed="27" aria-hidden="true"></canvas><div class="lx-mini"><div class="lx-mini-head">One-line Embed</div><div class="lx-mini-lines"><i></i><i></i><i></i></div></div></div>
+          <div class="lx-feature-art"><canvas class="lx-pixels" data-seed="27" aria-hidden="true"></canvas><div class="lx-mini"><div class="lx-mini-head">Install Anywhere</div><div class="lx-mini-lines"><i></i><i></i><i></i></div></div></div>
         </div>
       </section>
 
@@ -191,7 +203,43 @@
         <div class="lx-steps">
           <div class="lx-step"><span>01</span><h3>Paste your link</h3><p>Drop in any public website. We read robots.txt and the sitemap, follow every page and collect the text, forms, products and contact details.</p></div>
           <div class="lx-step"><span>02</span><h3>We build the brain</h3><p>Our AI turns the crawl into a knowledge pack: what you offer, prices, FAQs and the tasks visitors come to do. Your MCP server is generated from it.</p></div>
-          <div class="lx-step"><span>03</span><h3>See it live. Ship it.</h3><p>Open the live demo: your own website with the agent inside it, in your brand colour. Happy? Paste one script tag and it's on your site.</p></div>
+          <div class="lx-step"><span>03</span><h3>See it live. Ship it.</h3><p>Open the live demo: your own website with the agent inside it. Try two suggested questions. Happy? Install the WordPress plugin or one script tag, or let our team set it up.</p></div>
+        </div>
+      </section>
+
+      <!-- Integrate: from link to live agent, and where to paste it on each platform -->
+      <section id="integrate" class="lx-section lx-top-line" aria-labelledby="integrate-title">
+        <div class="lx-eyebrow"><i></i>Install Guide</div>
+        <h2 class="lx-big-title" id="integrate-title">Have a website? Here's how it becomes an AI agent, and how to put it live.</h2>
+
+        <ol class="lx-pipe">
+          <li><span>01</span><h3>Scan</h3><p>Paste your website address. We read every public page in about a minute.</p></li>
+          <li><span>02</span><h3>Learn</h3><p>Our AI builds a knowledge base: what you offer, prices, FAQs, contact details and what visitors come to do.</p></li>
+          <li><span>03</span><h3>Try</h3><p>Open the live demo: your real website with the agent inside. Ask two suggested questions.</p></li>
+          <li><span>04</span><h3>Install</h3><p>Upload the WordPress plugin, or paste one script tag. Or our team sets it up for you.</p></li>
+          <li><span>05</span><h3>Answer</h3><p>Visitors get instant answers and a guide around your pages, 24/7, in your brand.</p></li>
+        </ol>
+
+        <div class="lx-install">
+          <div class="lx-install-intro">
+            <h3>Pick your platform</h3>
+            <p>Your exact plugin and script line are on your results page after a scan. The line looks like this:</p>
+            <pre class="lx-code-line"><code>&lt;script src="https://your-site-bridge/widget.js" data-site="your-site-id" defer&gt;&lt;/script&gt;</code></pre>
+            <div class="lx-install-help">
+              <p><b>Prefer not to touch code?</b> Our team installs it, connects it to your content and checks it on your live site.</p>
+              <a class="lx-btn lx-btn-dark" href="#contact" data-contact>Contact our team for setup</a>
+            </div>
+          </div>
+          <div class="lx-platforms">
+            <details open><summary>WordPress</summary><ol><li>On your results page, click <b>Download for WordPress</b>.</li><li>In WordPress, go to <b>Plugins → Add New → Upload Plugin</b>, choose the .zip, then <b>Install</b> and <b>Activate</b>.</li><li>Done. An "Ask AI" button appears on every page. Change its colour or turn it off in <b>Settings → Site Bridge Agent</b>.</li></ol></details>
+            <details><summary>Shopify</summary><ol><li>Go to <b>Online Store → Themes</b>, open the theme menu and choose <b>Edit code</b>.</li><li>Open <b>layout/theme.liquid</b> and paste your script line just above <code>&lt;/body&gt;</code>.</li><li>Save. The agent appears on every page of your store.</li></ol></details>
+            <details><summary>Webflow</summary><ol><li>Open <b>Site settings → Custom code</b>.</li><li>Paste your script line into <b>Footer code</b> and save.</li><li>Publish your site.</li></ol></details>
+            <details><summary>Wix</summary><ol><li>Go to <b>Settings → Custom code → Add custom code</b>.</li><li>Paste your script line, choose <b>All pages</b> and place it in <b>Body – end</b>.</li><li>Apply. Custom code needs a Wix premium plan with a connected domain.</li></ol></details>
+            <details><summary>Squarespace</summary><ol><li>Go to <b>Settings → Advanced → Code Injection</b>.</li><li>Paste your script line into <b>Footer</b> and save.</li></ol></details>
+            <details><summary>Any other website</summary><ol><li>Paste your script line just before <code>&lt;/body&gt;</code> in your main template (HTML, React, Next.js, Laravel and more).</li><li>Using Google Tag Manager? Add it as a <b>Custom HTML</b> tag that fires on <b>All Pages</b>.</li></ol></details>
+            <details><summary>AI assistants and agent pipelines (MCP)</summary><ol><li>Copy your MCP address from the <b>Agent pipeline</b> tab on your results page.</li><li>In Claude Code run <code>claude mcp add --transport http your-site your-mcp-address</code>. Cursor, VS Code and Claude Desktop configs are on the same tab.</li></ol></details>
+            <details><summary>Your own chatbot, RAG or help centre</summary><ol><li>Open the <b>Knowledge base</b> tab on your results page.</li><li>Download it as Markdown or JSON and load it into your chatbot, custom GPT, RAG pipeline or help desk.</li></ol></details>
+          </div>
         </div>
       </section>
 
@@ -230,10 +278,13 @@
         <h2 class="lx-big-title">Answers to common questions about Site Bridge.</h2>
         <div class="lx-faq">
           <details open><summary>What does "agentic website" mean?</summary><p>Your site gains an AI agent that understands all of its content and can operate the interface: open pages, highlight things, fill forms. AI tools can also connect to it through an MCP server.</p></details>
-          <details><summary>Do I need to change my website's code?</summary><p>No. Scanning and the live demo need nothing from you. Going live is a single script tag pasted before the closing body tag.</p></details>
+          <details><summary>How do I add the agent to my website?</summary><p>On WordPress, upload the plugin from your results page and activate it. On Shopify, Webflow, Wix, Squarespace or any other site, paste one script tag before the closing body tag. The <a href="#integrate">install guide</a> shows where for each platform, or our team can set it up for you.</p></details>
+          <details><summary>Can I try it before setting it up?</summary><p>Yes. Scan your site and open the live demo: your real website with the agent inside it. The demo lets you ask two suggested questions so you can see it answer and move around your pages. For the full agent, contact our team for setup.</p></details>
+          <details><summary>Do I need to change my website's code?</summary><p>No. Scanning and the live demo need nothing from you. Going live is one plugin on WordPress, or a single script tag anywhere else.</p></details>
           <details><summary>Will the agent use my brand colours?</summary><p>Yes. It detects your primary button and link colour and your font from the page itself. You can also set a colour explicitly on the script tag.</p></details>
           <details><summary>Can the agent submit forms or make purchases?</summary><p>It fills fields with details the visitor gives, then asks for confirmation before any submit, purchase or payment. In the demo, forms are never actually sent.</p></details>
-          <details><summary>What is the MCP server for?</summary><p>It lets AI assistants like Claude, Cursor and others search your site, read pages, list offerings and follow your tasks, so your business shows up correctly inside AI tools.</p></details>
+          <details><summary>What is the MCP server for?</summary><p>It lets AI assistants like Claude, Cursor and others look up your site: its profile, a search across every page and the full text of any page, so your business shows up correctly inside AI tools.</p></details>
+          <details><summary>Can I use the knowledge base in my own chatbot?</summary><p>Yes. Download it as Markdown or JSON from your results page. It holds your site profile and the full text of every page with its source address, ready for a chatbot, custom GPT, RAG pipeline or help centre.</p></details>
           <details><summary>Which websites work best?</summary><p>Public marketing, product, service and e-commerce sites. Pages behind logins aren't crawled, and very JavaScript-heavy sites need the optional headless browser.</p></details>
         </div>
       </section>
@@ -258,7 +309,7 @@
           <a class="lx-btn lx-btn-line" href="#contact" data-contact>Contact Us ↗</a>
         </div>
         <div><h4>Product</h4><a href="#how">How It Works</a><a href="#capabilities">Capabilities</a><a href="#plans">Plans</a><a href="#faq">FAQ</a></div>
-        <div><h4>Build</h4><a href="#start">New Scan</a><a href="#embed">Embed</a></div>
+        <div><h4>Build</h4><a href="#start">New Scan</a><a href="#integrate">Install Guide</a><a href="#embed">WordPress &amp; Embed</a></div>
         <div><h4>Standards</h4><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP</a><a href="https://llmstxt.org" target="_blank" rel="noopener">llms.txt</a></div>
       </div>
       <div class="lx-foot-line"><span>© Site Bridge. All rights reserved.</span><span>Turn any website into an AI agent.</span></div>

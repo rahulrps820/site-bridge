@@ -53,7 +53,29 @@
     '.mic:hover{background:rgba(15,23,42,.06);color:var(--ink)}',
     '.mic.rec{background:#ef4444;color:#fff;animation:recp 1.2s ease-in-out infinite}',
     '@keyframes recp{50%{box-shadow:0 0 0 6px rgba(239,68,68,.18)}}',
-    '.mic[hidden],.speak[hidden]{display:none}'
+    '.mic[hidden],.speak[hidden]{display:none}',
+    // Live demo: recommended questions only, then a call to set it up
+    '[hidden]{display:none!important}',
+    '.demo{margin:4px 10px 10px;padding:12px;border-radius:16px;background:#fff;border:1px solid rgba(15,23,42,.1);box-shadow:0 2px 10px rgba(15,23,42,.06)}',
+    '.demo-k{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 8px;font-size:12px;color:var(--muted)}',
+    '.demo-k b{color:var(--ink);font-weight:600}',
+    '.demo-hint{margin:0 0 10px;font-size:12.5px;color:var(--muted)}',
+    '.qs{display:flex;flex-direction:column;gap:6px}',
+    '.q{display:block;width:100%;min-height:44px;text-align:left;border:1px solid rgba(15,23,42,.12);background:#f6f7fa;border-radius:12px;padding:10px 12px;font:inherit;font-size:13px;line-height:1.35;color:var(--ink);cursor:pointer;transition:border-color .2s,background .2s}',
+    '.q:hover{border-color:var(--accent);background:#fff}',
+    '.q:focus-visible,.cta a:focus-visible{outline:0;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}',
+    '.q:disabled{opacity:.5;cursor:default}',
+    '.cta h3{margin:0 0 4px;font-size:15px;font-weight:600;letter-spacing:-.01em}',
+    '.cta p{margin:0 0 12px;font-size:13px;color:var(--muted)}',
+    '.team-link{display:block;margin:10px auto 0;min-height:32px;padding:0 6px;border:0;background:none;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}',
+    '.team-link:hover{color:var(--ink)}',
+    '.team-form{display:flex;gap:6px;margin-top:10px}',
+    '.team-form input{flex:1;min-width:0;min-height:40px;border:1px solid rgba(15,23,42,.18);border-radius:10px;padding:0 10px;font:inherit;font-size:13px;color:var(--ink);outline:0}',
+    '.team-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}',
+    '.team-form button{min-height:40px;border:0;border-radius:10px;background:var(--ink);color:#fff;padding:0 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}',
+    '.team-msg{margin:6px 0 0;font-size:12px;color:#b91c1c}',
+    '.team-link:focus-visible,.team-form button:focus-visible{outline:0;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}',
+    '.cta a{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:12px;background:var(--accent);color:var(--on-accent);text-decoration:none;font-weight:600;font-size:13.5px}'
   ].join('\n');
 
   var ICON = {
@@ -143,16 +165,73 @@
       '<button class="icon-btn speak" type="button" title="Read replies aloud" aria-label="Read replies aloud" aria-pressed="false">' + ICON.speaker + '</button>' +
       '<button class="icon-btn reset" title="New conversation" aria-label="New conversation">' + ICON.reset + '</button>' +
       (opts.onClose ? '<button class="icon-btn close" title="Close" aria-label="Close assistant">' + ICON.close + '</button>' : '') +
-      '</header><div class="msgs" role="log" aria-live="polite"></div><div class="sugg"></div>' +
+      '</header><div class="msgs" role="log" aria-live="polite"></div><div class="sugg"></div><div class="demo" hidden></div>' +
       '<form><textarea rows="1" placeholder="Ask me anything…" aria-label="Message"></textarea><button class="mic" type="button" aria-label="Speak your message" title="Speak your message">' + ICON.mic + '</button><button class="send" type="submit" aria-label="Send">' + ICON.send + '</button></form></div>';
 
     var $ = function (s) { return root.querySelector(s); };
-    var shell = $('.ag'), msgs = $('.msgs'), sugg = $('.sugg'), form = $('form'), input = $('textarea'), sendBtn = $('.send');
+    var shell = $('.ag'), msgs = $('.msgs'), sugg = $('.sugg'), form = $('form'), input = $('textarea'), sendBtn = $('.send'), demoBox = $('.demo');
     if (opts.accent) { shell.style.setProperty('--accent', opts.accent); shell.style.setProperty('--on-accent', opts.onAccent || '#fff'); }
     if (opts.font) shell.style.setProperty('--font', opts.font);
     var cfg = { name: 'Assistant', greeting: 'Hi! How can I help?', suggestions: [] };
     var state = load() || { contents: [], log: [], resume: null, token: null };
     var busy = false, unloading = false;
+    // Live demo (opts.demo): recommended questions only, demo.limit of them, then "contact our team"
+    var demo = null, demoHtml = '', askedKey = 'sb:demo-asked:' + opts.siteId, teamOpen = false, teamMsg = '';
+    // A team pass (from the team password) lifts the demo limit for this site
+    function hasTeamPass() {
+      try {
+        var p = (localStorage.getItem('sb:pass') || '').split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+        var d = JSON.parse(atob(p));
+        return d.u === 'team' && d.s === opts.siteId && d.e > Date.now();
+      } catch (e) { return false; }
+    }
+    async function unlockTeam(pw) {
+      teamMsg = '';
+      try {
+        var res = await fetch(api + '/api/demo/team/' + encodeURIComponent(opts.siteId), { method: 'POST', headers: { 'content-type': 'application/json', 'x-sb-key': pw }, body: '{}' });
+        var d = await res.json().catch(function () { return {}; });
+        if (!res.ok || !d.pass) { teamMsg = d.error || 'That team password is not right.'; render(); return; }
+        try { localStorage.setItem('sb:pass', d.pass); localStorage.setItem('sb:pass:' + opts.siteId, d.pass); } catch (e) { /* blocked */ }
+        demo = null; teamOpen = false; render();
+        try { input.focus(); } catch (e) { /* hidden */ }
+      } catch (e) { teamMsg = 'Could not check the password. Please try again.'; render(); }
+    }
+    function asked() {
+      var users = state.log.filter(function (e) { return e.kind === 'user'; }).length, kept = 0;
+      try { kept = Number(localStorage.getItem(askedKey)) || 0; } catch (e) { /* blocked */ }
+      return Math.max(users, kept);
+    }
+    function setAsked(n) { try { localStorage.setItem(askedKey, String(n)); } catch (e) { /* blocked */ } }
+    function renderDemo() {
+      form.hidden = !!demo;
+      demoBox.hidden = !demo;
+      if (!demo) return;
+      sugg.innerHTML = '';
+      var n = asked(), left = Math.max(0, demo.limit - n), html;
+      if (left > 0) {
+        var done = state.log.filter(function (e) { return e.kind === 'user'; }).map(function (e) { return e.text.trim().toLowerCase(); });
+        var options = (demo.questions || []).filter(function (x) { return done.indexOf(String(x).trim().toLowerCase()) < 0; }).slice(0, 3);
+        html = '<div class="demo-k"><span><b>Live demo</b></span><span>' + left + ' of ' + demo.limit + ' question' + (demo.limit === 1 ? '' : 's') + ' left</span></div>' +
+          (n === 0 ? '<p class="demo-hint">Pick a question. Watch the agent answer and move around this website.</p>' : '') +
+          '<div class="qs" role="group" aria-label="Suggested questions">' + options.map(function (x) {
+            return '<button class="q" type="button"' + (busy ? ' disabled' : '') + '>' + esc(x) + '</button>';
+          }).join('') + '</div>';
+      } else if (busy) {
+        html = '<div class="demo-k"><span><b>Live demo</b></span><span>Answering your last question…</span></div>';
+      } else {
+        html = '<div class="cta"><h3>Like what you see?</h3><p>Our team can set this agent up on your own website, trained on your content.</p>' +
+          '<a href="' + esc(demo.contactUrl || '#') + '" target="_blank" rel="noopener">Contact our team for setup</a></div>';
+      }
+      html += teamOpen
+        ? '<form class="team-form"><input type="password" aria-label="Team password" placeholder="Team password" autocomplete="current-password" required><button type="submit">Unlock</button></form>' +
+          (teamMsg ? '<p class="team-msg" role="alert">' + esc(teamMsg) + '</p>' : '')
+        : '<button class="team-link" type="button">Team member? Unlock unlimited questions</button>';
+      if (html !== demoHtml) {
+        demoHtml = html; demoBox.innerHTML = html;
+        var f = demoBox.querySelector('.team-form');
+        if (f) { f.addEventListener('submit', function (e) { e.preventDefault(); unlockTeam(f.querySelector('input').value); }); if (!teamMsg) f.querySelector('input').focus(); }
+      }
+    }
     window.addEventListener('pagehide', function () { unloading = true; });
     window.addEventListener('beforeunload', function () { unloading = true; });
 
@@ -174,6 +253,7 @@
       var fresh = !state.log.some(function (e) { return e.kind === 'user'; });
       sugg.innerHTML = fresh ? (cfg.suggestions || []).slice(0, 3).map(function (s) { return '<button class="chip" type="button">' + esc(s) + '</button>'; }).join('') : '';
       sendBtn.disabled = busy;
+      renderDemo();
     }
 
     function setBusy(b) { busy = b; render(); }
@@ -185,7 +265,9 @@
       if (!res.ok) {
         // The server could not trust this conversation any more: start a fresh one
         if (data.reset) state = { contents: [], log: [], resume: null, token: null };
-        throw new Error(data.error || 'Sorry, I couldn’t answer that just now. Please try again.');
+        var err = new Error(data.error || 'Sorry, I couldn’t answer that just now. Please try again.');
+        err.data = data;
+        throw err;
       }
       return data;
     }
@@ -234,7 +316,9 @@
           if (await runPending(data.pending)) return;
         }
       } catch (e) {
-        state.log.push({ kind: 'error', text: e.message });
+        // The demo's questions are used up: show the setup card instead of an error
+        if (demo && e.data && e.data.demoOver) { setAsked(demo.limit); if (e.data.contactUrl) demo.contactUrl = e.data.contactUrl; }
+        else state.log.push({ kind: 'error', text: e.message });
       } finally {
         busy = false; save(); render();
         // When the agent is done, put the cursor back in the chat box so the visitor can keep typing
@@ -259,6 +343,10 @@
     async function send(text) {
       text = String(text || '').trim();
       if (!text || busy) return;
+      if (demo) {
+        if (asked() >= demo.limit) return;
+        setAsked(asked() + 1);
+      }
       state.log.push({ kind: 'user', text: text });
       state.contents.push({ role: 'user', parts: [{ text: text }] });
       save();
@@ -271,6 +359,10 @@
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
     input.addEventListener('input', function () { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 96) + 'px'; });
     sugg.addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (b) send(b.textContent); });
+    demoBox.addEventListener('click', function (e) {
+      if (e.target.closest('.team-link')) { teamOpen = true; render(); return; }
+      var b = e.target.closest('.q'); if (b && !b.disabled) send(b.textContent);
+    });
     $('.reset').addEventListener('click', reset);
 
     // ---- language, voice input and read-aloud ----
@@ -343,6 +435,7 @@
       if (!opts.accent && usableAccent(c.themeColor)) shell.style.setProperty('--accent', c.themeColor);
       if (!c.ai) { $('.st').textContent = 'AI Agent · Offline'; $('.orb').classList.add('off'); }
       if (opts.onConfig) opts.onConfig(c);
+      if (opts.demo && c.demo && c.demo.limit > 0 && !hasTeamPass()) demo = { limit: c.demo.limit, questions: c.demo.questions || [], contactUrl: c.demo.contactUrl };
       render();
       if (state.resume) resume();
     }).catch(function () { if (state.resume) resume(); });

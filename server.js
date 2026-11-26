@@ -42,7 +42,7 @@ app.use(express.json({ limit: '4mb' }));
 
 const cors = (req, res, next) => {
   res.setHeader('access-control-allow-origin', '*');
-  res.setHeader('access-control-allow-headers', 'content-type, mcp-session-id, mcp-protocol-version, authorization, x-sb-visitor, x-sb-pass');
+  res.setHeader('access-control-allow-headers', 'content-type, mcp-session-id, mcp-protocol-version, authorization, x-sb-visitor, x-sb-pass, x-sb-key');
   res.setHeader('access-control-allow-methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('access-control-expose-headers', 'mcp-session-id');
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -59,19 +59,22 @@ const jobs = new Map();
 
 // One shared password (DEMO_PASSWORD) unlocks scanning and live demos. Unset: everything is open.
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || '';
+// Team password (TEAM_PASSWORD): everything DEMO_PASSWORD opens, plus unlimited live-demo questions
+const TEAM_PASSWORD = process.env.TEAM_PASSWORD || '';
+const sameSecret = (got, want) => crypto.timingSafeEqual(crypto.createHash('sha256').update(String(got || '')).digest(), crypto.createHash('sha256').update(want).digest());
+const keyOfReq = req => req.headers['x-sb-key'] || req.body?.password || '';
+const isTeam = req => Boolean(TEAM_PASSWORD) && sameSecret(keyOfReq(req), TEAM_PASSWORD);
 const keyLimit = rateLimiter({ perMinute: 10, perHour: 60, keyOf: req => `key:${req.ip}`, message: 'Too many tries. Please wait a minute.' });
 function passwordOk(req) {
   if (!DEMO_PASSWORD) return true;
-  const got = crypto.createHash('sha256').update(String(req.headers['x-sb-key'] || req.body?.password || '')).digest();
-  const want = crypto.createHash('sha256').update(DEMO_PASSWORD).digest();
-  return crypto.timingSafeEqual(got, want);
+  return sameSecret(keyOfReq(req), DEMO_PASSWORD) || isTeam(req);
 }
 // The right password is never rate limited (unlimited demos); only wrong guesses are
 function needPassword(req, res, next) {
   if (passwordOk(req)) return next();
   keyLimit(req, res, () => res.status(401).json({ error: 'Wrong password.', password: true }));
 }
-app.post('/api/access/check', needPassword, (req, res) => res.json({ ok: true }));
+app.post('/api/access/check', needPassword, (req, res) => res.json({ ok: true, team: isTeam(req) }));
 
 // Scan with progress streamed back in the same response (works on serverless hosts too)
 app.post('/api/build/stream', needPassword, async (req, res) => {
@@ -141,7 +144,7 @@ function siteLinks(site) {
 }
 
 // auth holds only the public URL and publishable key; secret keys never leave the server
-app.get('/api/status', (req, res) => res.json({ ai: hasKey(), contact: process.env.CONTACT_EMAIL || null, spend: spend(), password: Boolean(DEMO_PASSWORD), agenticorg: agenticOrgReady,
+app.get('/api/status', (req, res) => res.json({ ai: hasKey(), contact: process.env.CONTACT_EMAIL || null, contactUrl: config.contactUrl || null, spend: spend(), password: Boolean(DEMO_PASSWORD), agenticorg: agenticOrgReady,
   payments: paymentsReady ? { upiId: payConfig.upiId, payee: payConfig.payee, amount: payConfig.amount, credits: payConfig.credits, free: payConfig.free } : null }));
 app.get('/api/sites', needPassword, async (req, res) => res.json(await listSites()));
 
@@ -175,7 +178,15 @@ app.post('/api/demo/start/:id', needPassword, async (req, res) => {
   if (!site) return res.status(404).json({ error: 'This site has not been scanned.' });
   // A 30-day pass for this site: the demo address only opens with it
   track(req, 'demo_open', { siteId: site.id });
-  res.json({ ok: true, pass: signPass({ u: 'shared', s: site.id, m: '', e: Date.now() + 30 * 24 * 3600_000 }) });
+  res.json({ ok: true, team: isTeam(req), pass: signPass({ u: isTeam(req) ? 'team' : 'shared', s: site.id, m: '', e: Date.now() + 30 * 24 * 3600_000 }) });
+});
+// Team unlock from inside a live demo panel (works on any origin, including local previews)
+app.options('/api/demo/team/:id', cors);
+app.post('/api/demo/team/:id', cors, async (req, res) => {
+  if (!isTeam(req)) return keyLimit(req, res, () => res.status(401).json({ error: 'That team password is not right.' }));
+  const site = await getSite(req.params.id);
+  if (!site) return res.status(404).json({ error: 'This site has not been scanned.' });
+  res.json({ ok: true, team: true, pass: signPass({ u: 'team', s: site.id, m: '', e: Date.now() + 30 * 24 * 3600_000 }) });
 });
 
 // Anonymous usage: the browser reports visits; the admin page reads the totals
@@ -252,8 +263,40 @@ app.get('/api/sites/:id/public', cors, async (req, res) => {
     id: site.id, name: m.name, origin: site.origin, startUrl: site.startUrl, favicon: site.favicon,
     themeColor: site.themeColor, greeting: m.greeting, suggestions: m.suggested_questions,
     previewOrigin: config.previewEnabled ? previewOriginFor(site.id) : null, ai: hasKey(), appUrl: config.publicUrl,
+    demo: { limit: config.demoQuestionLimit, questions: demoQuestions(site), contactUrl: contactUrlFor(site) },
   });
 });
+
+// ---------- live demo rules ----------
+// In a live demo the visitor picks from the recommended questions, DEMO_QUESTION_LIMIT times,
+// then is pointed to the team for setup. The agent embedded on a customer's own site is unlimited.
+const norm = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+function demoQuestions(site) {
+  const m = site.manifest;
+  const own = (m.suggested_questions || []).map(q => String(q || '').trim()).filter(Boolean);
+  const fallback = [`What does ${m.name} offer?`, `How can I contact ${m.name}?`, `Where do I start on this website?`];
+  return [...new Set([...own, ...fallback])].slice(0, Math.max(4, own.length));
+}
+function contactUrlFor(site) {
+  if (config.contactUrl) return config.contactUrl;
+  if (config.contactEmail) {
+    const subject = `Set up Site Bridge for ${site.manifest.name}`;
+    const body = `Hi team,\n\nI tried the Site Bridge live demo for ${site.origin} and would like to set it up on our website.\n\n`;
+    return `mailto:${config.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+  return `${config.publicUrl}/#contact`;
+}
+/** A chat request made from the live demo page (not from the widget on a customer's own site). */
+function isDemoRequest(req, siteId) {
+  const origin = String(req.headers.origin || '').toLowerCase().replace(/\/$/, '');
+  if (!origin) return false;
+  if (config.demoHost) return origin === `https://${config.demoHost}`;
+  return origin === previewOriginFor(siteId).toLowerCase().replace(/\/$/, '');
+}
+/** Visitor questions so far in a conversation: user turns with typed text, not tool results. */
+function questionsAsked(contents) {
+  return (Array.isArray(contents) ? contents : []).filter(t => t?.role === 'user' && t.parts?.some(p => typeof p?.text === 'string') && !t.parts.some(p => p?.functionResponse)).length;
+}
 
 // Chat guardrails: per-visitor and per-site rate limits here; input validation, signed
 // history, prompt-injection and leak defences in lib/guardrails.js via chatTurn.
@@ -266,7 +309,7 @@ const chatLimitBySite = rateLimiter({
 // Live demos opened with the shared password are unlimited: skip the chat rate limits for them
 const demoUnlimited = limit => (req, res, next) => {
   const pass = verifyPass(req.headers['x-sb-pass']);
-  if (pass && pass.u === 'shared' && pass.s === req.body?.siteId) return next();
+  if (pass && (pass.u === 'shared' || pass.u === 'team') && pass.s === req.body?.siteId) return next();
   return limit(req, res, next);
 };
 
@@ -280,14 +323,21 @@ app.post('/api/chat', cors, demoUnlimited(chatLimitByIp), demoUnlimited(chatLimi
     // Count a chat message when the visitor typed something (not for the agent's own page steps)
     const lastTurn = Array.isArray(contents) ? contents[contents.length - 1] : null;
     const typed = lastTurn?.role === 'user' && lastTurn.parts?.some(p => typeof p?.text === 'string');
-    // Live demos (on the demo address) need the account's demo pass, and typed messages count
-    // against the account's chat allowance
+    // Live demos on the demo address need a demo pass (issued for the password)
     if (config.demoHost && String(req.headers.origin || '').toLowerCase() === `https://${config.demoHost}`) {
       const pass = verifyPass(req.headers['x-sb-pass']);
       if (!pass || pass.s !== siteId) return res.status(401).json({ error: 'Please open this live demo from Site Bridge with the demo password.' });
-      if (typed && pass.u !== 'shared') {
-        const c = await useChat({ id: pass.u, email: pass.m }, siteId).catch(e => { console.error('[chats]', e.message); return { ok: true }; });
-        if (!c.ok) return res.status(402).json({ error: `You've used all ${c.limit} chats on your account. ${c.paid ? 'Pay ₹' + payConfig.amount + ' on Site Bridge for 10 more.' : 'Pay ₹' + payConfig.amount + ' on Site Bridge to get 10 more chats.'}` });
+    }
+    // Live demo: recommended questions only, DEMO_QUESTION_LIMIT of them
+    const teamPass = verifyPass(req.headers['x-sb-pass']);
+    const unlimited = teamPass && teamPass.u === 'team' && teamPass.s === siteId;
+    if (typed && !unlimited && config.demoQuestionLimit > 0 && isDemoRequest(req, siteId)) {
+      const asked = lastTurn.parts.find(p => typeof p?.text === 'string').text;
+      if (!demoQuestions(site).some(q => norm(q) === norm(asked))) {
+        return res.status(403).json({ error: 'In the demo, please pick one of the suggested questions.', demo: true });
+      }
+      if (questionsAsked(contents) > config.demoQuestionLimit) {
+        return res.status(402).json({ error: 'That was the last demo question. Contact our team to set this agent up on your website.', demo: true, demoOver: true, contactUrl: contactUrlFor(site) });
       }
     }
     if (lastTurn?.role === 'user' && lastTurn.parts?.some(p => typeof p?.text === 'string')) track(req, 'chat', { siteId });
