@@ -11,7 +11,7 @@
       "missing": [
         {
           "type": "host",
-          "value": "your-demo-host.vercel.app"
+          "value": "sitebridge-demo.rockpaperscissors.studio"
         }
       ],
       "destination": "/index.html"
@@ -21,7 +21,7 @@
       "missing": [
         {
           "type": "host",
-          "value": "your-demo-host.vercel.app"
+          "value": "sitebridge-demo.rockpaperscissors.studio"
         }
       ],
       "destination": "/index.html"
@@ -31,7 +31,7 @@
       "missing": [
         {
           "type": "host",
-          "value": "your-demo-host.vercel.app"
+          "value": "sitebridge-demo.rockpaperscissors.studio"
         }
       ],
       "destination": "/preview.html"
@@ -41,7 +41,7 @@
       "missing": [
         {
           "type": "host",
-          "value": "your-demo-host.vercel.app"
+          "value": "sitebridge-demo.rockpaperscissors.studio"
         }
       ],
       "destination": "/usage.html"
