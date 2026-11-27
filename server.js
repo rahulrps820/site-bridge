@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { config, previewOriginFor, demoPageFor } from './lib/config.js';
 import { buildSite } from './lib/builder.js';
-import { getSite, getIndex, listSites, deleteSite } from './lib/store.js';
+import { getSite, getIndex, listSites, deleteSite, storageKind } from './lib/store.js';
 import { handleMcp, publicTools } from './lib/mcp.js';
 import { wordpressPlugin, knowledgeMarkdown, knowledgeJson, pluginSlug } from './lib/package.js';
 import { chatTurn } from './lib/agent.js';
@@ -144,7 +144,7 @@ function siteLinks(site) {
 }
 
 // auth holds only the public URL and publishable key; secret keys never leave the server
-app.get('/api/status', (req, res) => res.json({ ai: hasKey(), contact: process.env.CONTACT_EMAIL || null, contactUrl: config.contactUrl || null, spend: spend(), password: Boolean(DEMO_PASSWORD), agenticorg: agenticOrgReady,
+app.get('/api/status', (req, res) => res.json({ ai: hasKey(), contact: process.env.CONTACT_EMAIL || null, contactUrl: config.contactUrl || null, spend: spend(), password: Boolean(DEMO_PASSWORD), storage: storageKind, agenticorg: agenticOrgReady,
   payments: paymentsReady ? { upiId: payConfig.upiId, payee: payConfig.payee, amount: payConfig.amount, credits: payConfig.credits, free: payConfig.free } : null }));
 app.get('/api/sites', needPassword, async (req, res) => res.json(await listSites()));
 
