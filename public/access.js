@@ -63,7 +63,8 @@
     return ask();
   }
 
-  function go(url) { var w = window.open(url, '_blank', 'noopener'); if (!w) location.href = url; }
+  // Without 'noopener' in the features, window.open returns the tab (with it, it always returns null)
+  function go(url) { var w = window.open(url, '_blank'); if (w) { try { w.opener = null; } catch (e) { /* cross-origin */ } } else location.href = url; }
 
   async function openDemo(siteId, url) {
     if (!(await unlocked())) return;

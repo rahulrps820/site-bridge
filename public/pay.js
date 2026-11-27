@@ -55,7 +55,8 @@
     input.focus({ preventScroll: true });
   }
 
-  function go(url) { var w = window.open(url, '_blank', 'noopener'); if (!w) location.href = url; }
+  // Without 'noopener' in the features, window.open returns the tab (with it, it always returns null)
+  function go(url) { var w = window.open(url, '_blank'); if (w) { try { w.opener = null; } catch (e) { /* cross-origin */ } } else location.href = url; }
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
